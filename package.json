@@ -1,0 +1,14 @@
+{
+  "name": "antigravity-for-omp",
+  "version": "0.16.1",
+  "description": "Run the Antigravity CLI (Gemini) as a collaborating AI inside omp, with intelligent model routing across the SDLC. Ported from yuting0624/antigravity-for-claude-code.",
+  "author": { "name": "zhdenny" },
+  "contributors": [{ "name": "linyuting", "url": "https://github.com/yuting0624" }],
+  "homepage": "https://antigravity.google/docs/cli-using",
+  "license": "MIT",
+  "keywords": ["antigravity", "gemini", "multi-agent", "orchestration", "delegation", "sdlc", "model-routing"],
+  "omp": {
+    "extensions": ["./extensions/index.ts"]
+  },
+  "files": ["extensions/", "skills/", "scripts/", "hooks/", "hooks/policy-context.json", "prices.json"]
+}

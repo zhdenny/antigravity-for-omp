@@ -1,0 +1,15 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "antigravity-for-omp",
+  "description": "Run the Antigravity CLI (Gemini) as a collaborating AI inside omp, with intelligent model routing across the SDLC.",
+  "owner": { "name": "zhdenny" },
+  "plugins": [
+    {
+      "name": "antigravity",
+      "description": "Hybrid omp + Antigravity (Gemini) workflow: the conductor keeps judgement calls, Antigravity handles scaffolding, tests, review, migrations, web/Vertex AI Search.",
+      "source": "./",
+      "category": "ai",
+      "keywords": ["antigravity", "gemini", "multi-agent", "sdlc", "model-routing"]
+    }
+  ]
+}
