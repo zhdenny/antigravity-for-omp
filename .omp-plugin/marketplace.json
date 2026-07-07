@@ -2,7 +2,7 @@
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "antigravity-for-omp",
   "description": "Run the Antigravity CLI (Gemini) as a collaborating AI inside omp, with intelligent model routing across the SDLC.",
-  "owner": { "name": "zhdenny" },
+  "owner": { "name": "zhdenny", "url": "https://github.com/zhdenny" },
   "plugins": [
     {
       "name": "antigravity",
