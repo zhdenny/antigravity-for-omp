@@ -87,9 +87,10 @@ export default function antigravity(pi: ExtensionAPI) {
     name: "agy_delegate",
     label: "Antigravity Delegate",
     description:
-      "Delegate a well-scoped task to Antigravity (agy/Gemini) via the plugin wrapper. " +
-      "Returns agy's stdout text. Use for bulk scaffolding, test generation, migrations, " +
-      "web/Vertex AI Search, or first-pass review. The caller owns verification.",
+      "Delegate work to Antigravity (agy/Gemini). USE for: bulk scaffolding, test generation, " +
+      "code review, web/internal search, multi-source research, migrations, or any high-volume " +
+      "deterministic work that saves context. AVOID for single-line edits or tiny tasks. " +
+      "Caller owns verification. Read the `antigravity` skill for full routing policy.",
     parameters: z.object({
       task: z.string().describe("The task prompt for agy"),
       tier: z.enum(["flash", "flash-lo", "pro"]).optional().describe("Model tier (default: flash)"),
