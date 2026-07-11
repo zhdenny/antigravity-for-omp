@@ -1,6 +1,6 @@
 {
   "name": "antigravity-for-omp",
-  "version": "0.16.1",
+  "version": "0.17.0",
   "description": "Run the Antigravity CLI (Gemini) as a collaborating AI inside omp, with intelligent model routing across the SDLC. Ported from yuting0624/antigravity-for-claude-code.",
   "author": { "name": "zhdenny" },
   "contributors": [{ "name": "linyuting", "url": "https://github.com/yuting0624" }],

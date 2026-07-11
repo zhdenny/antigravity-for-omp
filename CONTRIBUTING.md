@@ -4,7 +4,7 @@ Thanks for your interest! This is an early-stage, MIT-licensed community project
 issues, PRs, and even a ⭐ all genuinely help shape where it goes.
 
 **Not sure where to start?** Look for the
-[`good first issue`](https://github.com/yuting0624/antigravity-for-claude-code/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22)
+[`good first issue`](https://github.com/zhdenny/antigravity-for-omp/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22)
 label.
 
 ## What's especially welcome
@@ -41,7 +41,7 @@ shellcheck scripts/*.sh tests/*.sh   # CI gates on --severity=error
 ```
 
 - **Tests pass** and shellcheck is clean (CI runs both — see [`.github/workflows/ci.yml`](.github/workflows/ci.yml)).
-- If you touch a manifest, `python3 -c "import json; json.load(open('.claude-plugin/plugin.json'))"` (and `marketplace.json`, `prices.json`) still parse.
+- If you touch a manifest, `python3 -c "import json; json.load(open('.omp-plugin/marketplace.json'))"` (and `marketplace.json`, `prices.json`) still parse.
 - **Keep the skill honest.** [`skills/antigravity/SKILL.md`](skills/antigravity/SKILL.md) is the plugin's brain — if behavior changes, update it. Don't claim a capability the code doesn't have.
 - **Cost numbers are estimates.** If you quote figures, say so and point at `prices.json`.
 - Add a line to [`CHANGELOG.md`](CHANGELOG.md) under "Unreleased".

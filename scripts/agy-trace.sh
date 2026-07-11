@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 #
 # agy-trace.sh — read an agy SUBAGENT trajectory (transcript.jsonl).
-# Part of the "Antigravity for Claude Code" plugin.
+# Part of the "Antigravity for oh-my-pi" plugin.
 #
 # When agy spawns internal subagents (invoke_subagent with TypeName "self" + a
 # Role — see the skill's "Internal fan-out" recipe), each spawn's tool result
 # includes a logAbsoluteUri pointing at a READABLE step-by-step JSONL transcript:
 #   ~/.gemini/antigravity-cli/brain/<conversationId>/.system_generated/logs/transcript.jsonl
 # Unlike the opaque conversation .db blobs, these are auditable — this tool
-# pretty-prints them so Claude can run a trajectory check on what a subagent
+# pretty-prints them so the conductor can run a trajectory check on what a subagent
 # actually did (verified on agy 1.0.12).
 #
 # Usage:

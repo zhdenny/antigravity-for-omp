@@ -1,23 +1,23 @@
 # Troubleshooting
 
 Symptom-first guide to every problem reported so far. **Start by running `agy-doctor`**
-(or `/antigravity:setup` inside Claude Code) — it diagnoses most of the below and prints
+(or `/antigravity:setup` inside omp) — it diagnoses most of the below and prints
 the plugin version, agy version/auth state, and platform warnings.
 
 ---
 
-## "`/scripts/agy-delegate.sh: No such file or directory`" or `$CLAUDE_PLUGIN_ROOT` is empty
+## "`/scripts/agy-delegate.sh: No such file or directory`" or `$OMP_PLUGIN_ROOT` is empty
 
-**Cause:** you're on a plugin version < 0.14.0. `$CLAUDE_PLUGIN_ROOT` is only substituted
+**Cause:** you're on a plugin version < 0.14.0. `$OMP_PLUGIN_ROOT` is only substituted
 inside structured config (hooks/MCP) — it is **not** exported to the shell commands the
-model runs, so marketplace installs saw an empty path ([#11](https://github.com/yuting0624/antigravity-for-claude-code/issues/11),
-[#15](https://github.com/yuting0624/antigravity-for-claude-code/issues/15)).
+model runs, so marketplace installs saw an empty path ([#11](https://github.com/zhdenny/antigravity-for-omp/issues/11),
+[#15](https://github.com/zhdenny/antigravity-for-omp/issues/15)).
 
 **Fix:** update — since 0.14.0 everything is invoked by bare names (`agy-delegate`,
 `agy-job`, `agy-doctor`, `agy-cost-compare`) on the plugin's `bin/` PATH:
 
 ```
-/plugin marketplace update antigravity-for-claude-code
+/plugin marketplace update antigravity-for-omp
 /reload-plugins
 ```
 
@@ -28,7 +28,7 @@ model runs, so marketplace installs saw an empty path ([#11](https://github.com/
 **Cause (upstream, not the plugin):** on native Windows, headless `agy` needs a real
 console (ConPTY). When the plugin runs it as a child process with redirected stdio there
 is no console, and agy v1.0.x can hard-hang before producing any output
-([#6](https://github.com/yuting0624/antigravity-for-claude-code/issues/6)).
+([#6](https://github.com/zhdenny/antigravity-for-omp/issues/6)).
 
 **"But agy works when I type it in my terminal!"** — yes: typed directly, agy has a real
 console (interactive mode). Invoked by the plugin, it runs headless (no console). That's
@@ -40,7 +40,7 @@ hang" instead of the misleading "not authenticated".
 
 **Fix: use WSL** (fully supported):
 1. `wsl --install` (one-time; reboot)
-2. Install Claude Code **and** the Antigravity CLI *inside* WSL; authenticate agy there
+2. Install omp **and** the Antigravity CLI *inside* WSL; authenticate agy there
    (`agy models` should list models)
 3. Keep your repo on the WSL Linux filesystem (`~/project`), **not** `/mnt/c/...`
 4. Run `/antigravity:setup` from WSL — it should go green
@@ -61,16 +61,16 @@ wrapper and `agy-doctor` warn when they detect this.
 
 **Cause:** write tasks need `--yolo` (`--dangerously-skip-permissions`). Without it,
 headless agy only *describes* the edits and still returns success
-([#10](https://github.com/yuting0624/antigravity-for-claude-code/issues/10)). The wrapper
+([#10](https://github.com/zhdenny/antigravity-for-omp/issues/10)). The wrapper
 warns when a write-looking prompt lacks `--yolo`.
 
 **Fix:**
 - Pass `--yolo` for write tasks, and run them on a **dedicated branch** (add `--sandbox`
   for containment).
-- Claude Code may prompt for (or in auto-mode, block) `--dangerously-skip-permissions` —
+- omp may prompt for (or in auto-mode, block) `--dangerously-skip-permissions` —
   approve it, or pre-allow `Bash(agy-delegate*)` in your permission settings.
 - **Always verify files actually changed** (`git status`) — never trust the self-report.
-- Long write tasks can exceed Claude Code's ~2-min synchronous Bash limit → run them as a
+- Long write tasks can exceed omp's ~2-min synchronous Bash limit → run them as a
   background job: `ID=$(agy-job start --tier pro --dir . "<task>")`, then
   `/antigravity:status` / `/antigravity:result <id>` (interactive sessions only).
 
@@ -121,7 +121,7 @@ plugin option; `0` disables the warning.
 Third-party marketplace plugins do **not** auto-update by default:
 
 ```
-/plugin marketplace update antigravity-for-claude-code
+/plugin marketplace update antigravity-for-omp
 /reload-plugins
 ```
 
@@ -132,6 +132,6 @@ version bumps — see [CHANGELOG.md](../CHANGELOG.md).
 
 ## Still stuck?
 
-[Open a bug report](https://github.com/yuting0624/antigravity-for-claude-code/issues/new/choose)
+[Open a bug report](https://github.com/zhdenny/antigravity-for-omp/issues/new/choose)
 — the template asks for your `agy-doctor` output, OS, and install method, which is
 usually everything needed to diagnose in one round-trip.

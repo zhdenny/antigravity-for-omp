@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 #
 # agy-delegate.sh — robust headless wrapper around the Antigravity CLI (`agy`).
-# Part of the "Antigravity for Claude Code" plugin.
+# Part of the "Antigravity for oh-my-pi" plugin.
 #
-# Purpose: let Claude Code (the orchestrator) hand a single, well-scoped subtask
+# Purpose: let the conductor (the orchestrator) hand a single, well-scoped subtask
 # to an Antigravity (Gemini) agent via `agy --print`, and get clean text back on
 # stdout — for delegation, cross-model checks, or offloading bulk work.
 #
@@ -41,13 +41,13 @@
 #
 # agy is multi-model: tiers map to Gemini by default, but you can point delegation at any
 # model `agy models` lists (e.g. Claude/GPT on plans that expose them). Defaults via plugin
-# userConfig (env): CLAUDE_PLUGIN_OPTION_DEFAULT_TIER, _TIMEOUT, _DEFAULT_MODEL (exact name),
+# userConfig (env): OMP_PLUGIN_OPTION_DEFAULT_TIER, _TIMEOUT, _DEFAULT_MODEL (exact name),
 # and per-tier remaps _TIER_FLASH / _TIER_FLASH_LO / _TIER_PRO. Explicit --model/--tier win.
 #
 set -euo pipefail
 
-TIER="${CLAUDE_PLUGIN_OPTION_DEFAULT_TIER:-flash}"
-TIMEOUT="${CLAUDE_PLUGIN_OPTION_TIMEOUT:-5m}"
+TIER="${OMP_PLUGIN_OPTION_DEFAULT_TIER:-flash}"
+TIMEOUT="${OMP_PLUGIN_OPTION_TIMEOUT:-5m}"
 TIER_EXPLICIT=0
 MODEL=""
 YOLO=0
@@ -84,9 +84,9 @@ usage() { sed -n '/^# Usage:/,/^# Exit codes:/p' "$0" | sed 's/^# \{0,1\}//'; ex
 # (env), so non-Vertex/non-Gemini plans (Claude/GPT) work without code changes.
 model_for_tier() {
   case "$1" in
-    flash)    echo "${CLAUDE_PLUGIN_OPTION_TIER_FLASH:-Gemini 3.5 Flash (High)}" ;;
-    flash-lo) echo "${CLAUDE_PLUGIN_OPTION_TIER_FLASH_LO:-Gemini 3.5 Flash (Low)}" ;;
-    pro)      echo "${CLAUDE_PLUGIN_OPTION_TIER_PRO:-Gemini 3.1 Pro (High)}" ;;
+    flash)    echo "${OMP_PLUGIN_OPTION_TIER_FLASH:-Gemini 3.5 Flash (High)}" ;;
+    flash-lo) echo "${OMP_PLUGIN_OPTION_TIER_FLASH_LO:-Gemini 3.5 Flash (Low)}" ;;
+    pro)      echo "${OMP_PLUGIN_OPTION_TIER_PRO:-Gemini 3.1 Pro (High)}" ;;
     *) die "unknown tier '$1' (use flash | flash-lo | pro)" ;;
   esac
 }
@@ -168,13 +168,13 @@ fi
 if [ -z "$MODEL" ]; then
   if [ "$TIER_EXPLICIT" -eq 1 ]; then
     MODEL="$(model_for_tier "$TIER")"
-  elif [ -n "${CLAUDE_PLUGIN_OPTION_DEFAULT_MODEL:-}" ]; then
-    MODEL="$CLAUDE_PLUGIN_OPTION_DEFAULT_MODEL"
+  elif [ -n "${OMP_PLUGIN_OPTION_DEFAULT_MODEL:-}" ]; then
+    MODEL="$OMP_PLUGIN_OPTION_DEFAULT_MODEL"
   else
     # default tier from userConfig; a bad value shouldn't make every call die.
     case "$TIER" in
       flash|flash-lo|pro) ;;
-      *) echo "agy-delegate: invalid default tier '$TIER' (set CLAUDE_PLUGIN_OPTION_DEFAULT_TIER to flash|flash-lo|pro); using flash" >&2; TIER="flash" ;;
+      *) echo "agy-delegate: invalid default tier '$TIER' (set OMP_PLUGIN_OPTION_DEFAULT_TIER to flash|flash-lo|pro); using flash" >&2; TIER="flash" ;;
     esac
     MODEL="$(model_for_tier "$TIER")"
   fi
@@ -302,8 +302,8 @@ fi
 # Digest-size guard: the cost saving depends on the conductor ingesting a DIGEST,
 # not a raw dump — if the reply is dump-sized, say so on stderr (advisory only;
 # stdout passes through untouched). Tune via the digest_warn_chars plugin option
-# (env CLAUDE_PLUGIN_OPTION_DIGEST_WARN_CHARS; empty = 8000, 0 = off).
-WARN_CHARS="${CLAUDE_PLUGIN_OPTION_DIGEST_WARN_CHARS:-8000}"
+# (env OMP_PLUGIN_OPTION_DIGEST_WARN_CHARS; empty = 8000, 0 = off).
+WARN_CHARS="${OMP_PLUGIN_OPTION_DIGEST_WARN_CHARS:-8000}"
 case "$WARN_CHARS" in (*[!0-9]*|'') WARN_CHARS=8000 ;; esac
 if [ "$WARN_CHARS" -gt 0 ] && [ "${#OUT}" -gt "$WARN_CHARS" ]; then
   echo "agy-delegate: note: output is ${#OUT} chars (> ${WARN_CHARS}) — that looks like a raw dump, not a digest. Don't ingest this into the conductor's context: re-run with --digest, or have agy summarize it first. (plugin option digest_warn_chars tunes this; 0 disables.)" >&2

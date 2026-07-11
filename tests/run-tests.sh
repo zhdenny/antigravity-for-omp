@@ -32,34 +32,7 @@ esac
 STUB
 chmod +x "$TMP/bin/agy"
 
-# --- stub `gcloud` on PATH; logging-read behavior controlled by $GCLOUD_MODE ----
-cat > "$TMP/bin/gcloud" <<'STUB'
-#!/usr/bin/env bash
-if [ "$1" = "config" ]; then echo "stub-project"; exit 0; fi   # config get-value project
-if [ "$1" = "logging" ] && [ "$2" = "read" ]; then
-  case "${GCLOUD_MODE:-logs}" in
-    perm)  echo "ERROR: (gcloud.logging.read) PERMISSION_DENIED: caller does not have permission logging.logEntries.list" >&2; exit 1 ;;
-    empty) echo "[]" ;;
-    fail)  echo "ERROR: (gcloud.logging.read) something broke" >&2; exit 1 ;;
-    big)   pad=$(printf 'A%.0s' {1..3000}); printf '[{"m":"%s"}]TAIL_SENTINEL\n' "$pad" ;;  # large ASCII payload w/ tail marker
-    bigjp) pad=$(printf 'あ%.0s' {1..3000}); printf '[{"m":"%s"}]TAIL_SENTINEL\n' "$pad" ;;  # large multibyte (3-byte/char) payload
-    *)     echo '[{"severity":"ERROR","textPayload":"KeyError: DATABASE_URL","timestamp":"2026-06-28T00:00:00Z"}]' ;;
-  esac
-  exit 0
-fi
-echo "gcloud-stub: unhandled args: $*" >&2; exit 99
-STUB
-chmod +x "$TMP/bin/gcloud"
-
 export PATH="$TMP/bin:$PATH"
-
-# A minimal PATH dir with common utils but deliberately NO gcloud/agy, so
-# "missing on PATH" tests stay deterministic on runners that ship gcloud in
-# /usr/bin (GitHub-hosted ubuntu does — so PATH=/usr/bin:/bin would still find it).
-mkdir -p "$TMP/min"
-for u in bash sh env dirname basename pwd sed cat mktemp grep tr cut find wc head tail sort uniq sleep python3 rm chmod; do
-  s="$(command -v "$u" 2>/dev/null)" && ln -sf "$s" "$TMP/min/$u"
-done
 
 check() { # desc  expected_rc  actual_rc  [substr]  [actual_out]
   local desc="$1" erc="$2" arc="$3" sub="${4:-}" out="${5:-}"
@@ -120,32 +93,32 @@ else
 fi
 
 # userConfig default tier via env; explicit --tier still wins
-out=$(STUB_MODE=args CLAUDE_PLUGIN_OPTION_DEFAULT_TIER=pro "$DELEGATE" "hi" 2>/dev/null); rc=$?
+out=$(STUB_MODE=args OMP_PLUGIN_OPTION_DEFAULT_TIER=pro "$DELEGATE" "hi" 2>/dev/null); rc=$?
 check "userConfig default_tier=pro -> Pro model" 0 "$rc" "Gemini 3.1 Pro (High)" "$out"
 
-out=$(STUB_MODE=args CLAUDE_PLUGIN_OPTION_DEFAULT_TIER=pro "$DELEGATE" --tier flash "hi" 2>/dev/null); rc=$?
+out=$(STUB_MODE=args OMP_PLUGIN_OPTION_DEFAULT_TIER=pro "$DELEGATE" --tier flash "hi" 2>/dev/null); rc=$?
 check "explicit --tier overrides userConfig" 0 "$rc" "Gemini 3.5 Flash (High)" "$out"
 
 # multi-model: default_model + per-tier remap (agy supports Claude/GPT on some plans)
-out=$(STUB_MODE=args CLAUDE_PLUGIN_OPTION_DEFAULT_MODEL="Claude Sonnet 4.5" "$DELEGATE" "hi" 2>/dev/null); rc=$?
+out=$(STUB_MODE=args OMP_PLUGIN_OPTION_DEFAULT_MODEL="Claude Sonnet 4.5" "$DELEGATE" "hi" 2>/dev/null); rc=$?
 check "userConfig default_model -> used as-is" 0 "$rc" "Claude Sonnet 4.5" "$out"
-out=$(STUB_MODE=args CLAUDE_PLUGIN_OPTION_DEFAULT_MODEL="Claude Sonnet 4.5" "$DELEGATE" --tier flash "hi" 2>/dev/null); rc=$?
+out=$(STUB_MODE=args OMP_PLUGIN_OPTION_DEFAULT_MODEL="Claude Sonnet 4.5" "$DELEGATE" --tier flash "hi" 2>/dev/null); rc=$?
 check "explicit --tier beats default_model" 0 "$rc" "Gemini 3.5 Flash (High)" "$out"
-out=$(STUB_MODE=args CLAUDE_PLUGIN_OPTION_DEFAULT_MODEL="Claude Sonnet 4.5" "$DELEGATE" -m "GPT-X" "hi" 2>/dev/null); rc=$?
+out=$(STUB_MODE=args OMP_PLUGIN_OPTION_DEFAULT_MODEL="Claude Sonnet 4.5" "$DELEGATE" -m "GPT-X" "hi" 2>/dev/null); rc=$?
 check "explicit --model beats default_model" 0 "$rc" "GPT-X" "$out"
-out=$(STUB_MODE=args CLAUDE_PLUGIN_OPTION_TIER_FLASH="Claude Sonnet 4.5" "$DELEGATE" --tier flash "hi" 2>/dev/null); rc=$?
+out=$(STUB_MODE=args OMP_PLUGIN_OPTION_TIER_FLASH="Claude Sonnet 4.5" "$DELEGATE" --tier flash "hi" 2>/dev/null); rc=$?
 check "tier_flash remap -> flash uses remapped model" 0 "$rc" "Claude Sonnet 4.5" "$out"
 
 # default + userConfig timeout, with explicit flag winning
 out=$(STUB_MODE=args "$DELEGATE" "hi" 2>/dev/null); rc=$?
 check "default timeout -> --print-timeout 5m" 0 "$rc" "--print-timeout 5m" "$out"
-out=$(STUB_MODE=args CLAUDE_PLUGIN_OPTION_TIMEOUT=9m "$DELEGATE" "hi" 2>/dev/null); rc=$?
+out=$(STUB_MODE=args OMP_PLUGIN_OPTION_TIMEOUT=9m "$DELEGATE" "hi" 2>/dev/null); rc=$?
 check "userConfig timeout=9m -> --print-timeout 9m" 0 "$rc" "--print-timeout 9m" "$out"
-out=$(STUB_MODE=args CLAUDE_PLUGIN_OPTION_TIMEOUT=9m "$DELEGATE" --timeout 3m "hi" 2>/dev/null); rc=$?
+out=$(STUB_MODE=args OMP_PLUGIN_OPTION_TIMEOUT=9m "$DELEGATE" --timeout 3m "hi" 2>/dev/null); rc=$?
 check "explicit --timeout overrides userConfig" 0 "$rc" "--print-timeout 3m" "$out"
 
 # invalid default tier from config falls back to flash; explicit --tier typo still errors
-out=$(STUB_MODE=args CLAUDE_PLUGIN_OPTION_DEFAULT_TIER=bogus "$DELEGATE" "hi" 2>/dev/null); rc=$?
+out=$(STUB_MODE=args OMP_PLUGIN_OPTION_DEFAULT_TIER=bogus "$DELEGATE" "hi" 2>/dev/null); rc=$?
 check "invalid userConfig tier -> falls back to flash" 0 "$rc" "Gemini 3.5 Flash (High)" "$out"
 out=$("$DELEGATE" --tier bogus "hi" 2>/dev/null); rc=$?
 check "explicit --tier bogus -> exit 1" 1 "$rc"
@@ -183,10 +156,10 @@ check "dump-sized output -> raw-dump note on stderr" 0 "$rc" "raw dump" "$out"
 out=$(STUB_MODE=text "$DELEGATE" "hi" 2>&1 >/dev/null)
 if printf '%s' "$out" | grep -q "raw dump"; then echo "FAIL: digest guard fired on a small reply"; FAIL=$((FAIL+1));
 else echo "ok: digest guard silent on a small reply"; PASS=$((PASS+1)); fi
-out=$(STUB_MODE=big CLAUDE_PLUGIN_OPTION_DIGEST_WARN_CHARS=0 "$DELEGATE" "hi" 2>&1 >/dev/null)
+out=$(STUB_MODE=big OMP_PLUGIN_OPTION_DIGEST_WARN_CHARS=0 "$DELEGATE" "hi" 2>&1 >/dev/null)
 if printf '%s' "$out" | grep -q "raw dump"; then echo "FAIL: digest guard fired with digest_warn_chars=0"; FAIL=$((FAIL+1));
 else echo "ok: digest_warn_chars=0 disables the guard"; PASS=$((PASS+1)); fi
-out=$(STUB_MODE=text CLAUDE_PLUGIN_OPTION_DIGEST_WARN_CHARS=5 "$DELEGATE" "hi" 2>&1 >/dev/null); rc=$?
+out=$(STUB_MODE=text OMP_PLUGIN_OPTION_DIGEST_WARN_CHARS=5 "$DELEGATE" "hi" 2>&1 >/dev/null); rc=$?
 check "custom digest_warn_chars threshold respected" 0 "$rc" "raw dump" "$out"
 
 # WSL slow-mount note: fires only under WSL AND when --add-dir is on /mnt/*
@@ -195,80 +168,6 @@ check "WSL + /mnt --dir -> slow-mount note" 0 "$rc" "9p bridge" "$out"
 out=$(WSL_DISTRO_NAME=Ubuntu "$DELEGATE" --dir /home/u/proj --print-command "hi" 2>&1); rc=$?
 if printf '%s' "$out" | grep -q "9p bridge"; then echo "FAIL: slow-mount note fired for a Linux-FS --dir"; FAIL=$((FAIL+1));
 else echo "ok: no slow-mount note for a Linux-FS --dir"; PASS=$((PASS+1)); fi
-
-echo "== cloud-debug.sh (Cloud Run log digest engine) =="
-CLOUD="$ROOT/scripts/cloud-debug.sh"
-
-# (a) logs fetched -> handed to agy -> digest printed (exit 0). agy stub -> STUB_OK.
-out=$(GCLOUD_MODE=logs "$CLOUD" --service svc 2>/dev/null); rc=$?
-check "logs -> agy digest -> exit 0" 0 "$rc" "STUB_OK" "$out"
-
-# (b) --since defaults to 1h; an explicit --since wins. (dry run; no calls made)
-out=$("$CLOUD" --service svc --print-command 2>/dev/null); rc=$?
-check "default --since -> --freshness=1h" 0 "$rc" "--freshness=1h" "$out"
-out=$("$CLOUD" --service svc --since 3h --print-command 2>/dev/null); rc=$?
-check "explicit --since overrides default" 0 "$rc" "--freshness=3h" "$out"
-
-# the resolved gcloud verb is READ-only (logging read), and the resource type is
-# parameterized (default cloud_run_revision; overridable for a future gke/functions cmd)
-check "engine uses read-only 'logging read'" 0 "$rc" "logging read" "$out"
-out=$("$CLOUD" --service svc --print-command 2>/dev/null); rc=$?
-check "default resource type is cloud_run_revision" 0 "$rc" "cloud_run_revision" "$out"
-out=$("$CLOUD" --service svc --resource-type k8s_container --print-command 2>/dev/null); rc=$?
-check "--resource-type is parameterized" 0 "$rc" "k8s_container" "$out"
-
-# lean handoff: gcloud --format PROJECTS only the digest fields (not raw json),
-# dropping resource/insertId noise — shrinks the payload sent to agy.
-out=$("$CLOUD" --service svc --print-command 2>/dev/null); rc=$?
-check "gcloud --format projects digest fields (httpRequest.status)" 0 "$rc" "httpRequest.status" "$out"
-check "gcloud --format keeps the message body (jsonPayload)" 0 "$rc" "jsonPayload" "$out"
-
-# (c) read-only: no --apply path in the engine, and a real run writes no files to CWD.
-out=$("$CLOUD" --service svc --apply 2>/dev/null); rc=$?
-check "engine rejects --apply (write path is command-level, not here)" 1 "$rc"
-WORK="$TMP/cdwork"; mkdir -p "$WORK"
-( cd "$WORK" && GCLOUD_MODE=logs "$CLOUD" --service svc >/dev/null 2>&1 )
-nf=$(find "$WORK" -type f | wc -l)
-if [ "$nf" -eq 0 ]; then echo "ok: a diagnosis run writes no files to the project"; PASS=$((PASS+1));
-else echo "FAIL: cloud-debug wrote $nf file(s) to CWD on a read-only run"; FAIL=$((FAIL+1)); fi
-
-# (d) missing roles/logging.viewer -> exit 3 with actionable guidance
-out=$(GCLOUD_MODE=perm "$CLOUD" --service svc 2>&1); rc=$?
-check "permission denied -> exit 3 + logging.viewer guidance" 3 "$rc" "logging.viewer" "$out"
-
-# misc: required --service, generic gcloud failure, gcloud missing, no logs
-out=$("$CLOUD" 2>/dev/null); rc=$?
-check "missing --service -> exit 1" 1 "$rc"
-out=$(GCLOUD_MODE=fail "$CLOUD" --service svc 2>/dev/null); rc=$?
-check "generic gcloud failure -> exit 2" 2 "$rc"
-out=$(PATH="$TMP/min" "$CLOUD" --service svc 2>&1); rc=$?
-check "gcloud missing on PATH -> exit 4" 4 "$rc" "gcloud" "$out"
-out=$(GCLOUD_MODE=empty "$CLOUD" --service svc 2>/dev/null); rc=$?
-check "no matching logs -> exit 0 + clear note" 0 "$rc" "no logs" "$out"
-
-# agy digest step failure surfaces as exit 5 (logs fetched fine, agy errored)
-out=$(GCLOUD_MODE=logs STUB_MODE=fail "$CLOUD" --service svc 2>/dev/null); rc=$?
-check "agy digest failure -> exit 5" 5 "$rc"
-
-# byte cap (backstop): a big payload + a tiny CLOUD_DEBUG_MAX_BYTES -> the tail is
-# clipped before agy and the instruction tells agy what happened.
-out=$(GCLOUD_MODE=big STUB_MODE=args CLOUD_DEBUG_MAX_BYTES=50 "$CLOUD" --service svc 2>/dev/null); rc=$?
-check "byte cap -> clip NOTE handed to agy" 0 "$rc" "clipped to 50 bytes" "$out"
-check "byte cap NOTE warns the JSON is now invalid" 0 "$rc" "no longer valid JSON" "$out"
-if printf '%s' "$out" | grep -q "TAIL_SENTINEL"; then
-  echo "FAIL: payload tail not clipped (sentinel survived the cap)"; FAIL=$((FAIL+1));
-else echo "ok: payload clipped to the cap (tail dropped before agy)"; PASS=$((PASS+1)); fi
-# the cap is BYTE-based, so a multibyte (3-byte/char) payload is clipped too
-out=$(GCLOUD_MODE=bigjp STUB_MODE=args CLOUD_DEBUG_MAX_BYTES=50 "$CLOUD" --service svc 2>/dev/null); rc=$?
-check "byte cap clips a multibyte payload too" 0 "$rc" "clipped to 50 bytes" "$out"
-if printf '%s' "$out" | grep -q "TAIL_SENTINEL"; then
-  echo "FAIL: multibyte payload tail not clipped (cap counting chars, not bytes?)"; FAIL=$((FAIL+1));
-else echo "ok: multibyte payload clipped (byte-accurate cap)"; PASS=$((PASS+1)); fi
-# under the cap -> no clip NOTE (no false positives on a normal payload)
-out=$(GCLOUD_MODE=logs STUB_MODE=args "$CLOUD" --service svc 2>/dev/null); rc=$?
-if printf '%s' "$out" | grep -q "clipped to"; then
-  echo "FAIL: clip NOTE on a payload under the cap"; FAIL=$((FAIL+1));
-else echo "ok: no clip NOTE when under the cap"; PASS=$((PASS+1)); fi
 
 echo "== policy-context.json valid =="
 python3 -c "import json; json.load(open('$ROOT/hooks/policy-context.json'))" 2>/dev/null; rc=$?
@@ -300,8 +199,8 @@ echo "== measure-session.py =="
 SESS="$TMP/sess.jsonl"
 cat > "$SESS" <<'JSONL'
 {"message":{"role":"user","content":"hi"}}
-{"message":{"role":"assistant","usage":{"output_tokens":10,"input_tokens":2,"cache_read_input_tokens":100},"content":[{"type":"tool_use","name":"Bash"}]}}
-{"message":{"role":"assistant","usage":{"output_tokens":5}}}
+{"message":{"role":"assistant","content":[{"type":"toolCall","name":"Bash"}],"usage":{"output":10,"input":2,"cacheRead":100,"cacheWrite":0}}}
+{"message":{"role":"assistant","usage":{"output":5,"input":0,"cacheRead":0,"cacheWrite":0}}}
 JSONL
 out=$(python3 "$MEASURE" "$SESS" "T" 2>/dev/null); rc=$?
 # output=15 input=2 cache_read=100 -> weighted = 15*5 + 2 + 100*0.1 = 87 ; total=117 ; turns=2
@@ -392,14 +291,14 @@ need(t.startswith("---") and t.count("---") >= 2, "no YAML frontmatter in SKILL.
 need(os.path.isfile(p("extensions", "index.ts")), "missing extensions/index.ts")
 
 # All scripts are executable
-for s in ("agy-delegate.sh", "agy-job.sh", "agy-cost-compare.sh", "agy-trace.sh", "cloud-debug.sh", "doctor.sh"):
+for s in ("agy-delegate.sh", "agy-job.sh", "agy-cost-compare.sh", "agy-trace.sh", "doctor.sh"):
     need(os.access(p("scripts", s), os.X_OK), "not executable: scripts/" + s)
 
-# policy-context.json does not reference CLAUDE_PLUGIN_ROOT (empty on model Bash)
+# policy-context.json does not reference OMP_PLUGIN_ROOT (empty on model Bash)
 pc = json.load(open(p("hooks", "policy-context.json")))
 if isinstance(pc, dict):
     pc_str = json.dumps(pc)
-    need("CLAUDE_PLUGIN_ROOT" not in pc_str, "policy-context.json references CLAUDE_PLUGIN_ROOT")
+    need("OMP_PLUGIN_ROOT" not in pc_str, "policy-context.json references OMP_PLUGIN_ROOT")
 
 if errs:
     print("CONTRACT FAIL:")

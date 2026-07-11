@@ -51,7 +51,7 @@ you → omp (conduct: design / verify / review)
 
 On a **large** ADK multi-agent build (+ `adk eval`), same task / same model, 3 ways:
 
-| | Claude solo @high | solo @max | **hybrid** |
+| | solo @high | solo @max | **hybrid** |
 |---|---|---|---|
 | frontier cost (COST-WEIGHTED) | 2.62M | 5.34M | **1.91M** |
 | quality (`adk eval`) | ✅ 3/3 | ✅ 3/3 | ✅ **3/3** |
@@ -86,7 +86,6 @@ omp plugin link ~/antigravity-for-omp
 | `/antigravity-delegate [--tier flash\|pro] <task>` | delegate a subtask to agy under cost discipline, then verify |
 | `/antigravity-review` | independent cross-model review of the current diff; the conductor reconciles |
 | `/antigravity-research <topic>` | conductor-orchestrated deep research — agy does grounded web legwork, conductor verifies citations across ≥2 sources |
-| `/antigravity-cloud-run-debug [--service <s>] [--region <r>] [--project <id>] [--since 1h]` | diagnose a failing Cloud Run service — agy digests the error logs, conductor infers the root cause + fix; read-only by default |
 | `/antigravity-status [id]` · `/antigravity-result <id>` · `/antigravity-cancel <id>` | manage background delegation jobs |
 
 ---
@@ -156,7 +155,7 @@ Delegation doesn't save money by itself — these do (also in the skill):
 **Known limits (agy v1.0.x)**
 - `-p`/`--print` **takes the prompt as its value** and must come last — the wrapper handles this.
 - No `--output-format json` (plain text); `--print` drops stdout on a non-TTY unless stdin is detached (handled via `< /dev/null`).
-- **Writes need `--yolo`:** without it, headless agy only *describes* edits and returns a confident success **without writing any files** ([issue #10](https://github.com/yuting0624/antigravity-for-claude-code/issues/10)). Pass `--yolo` for write tasks (on a branch).
+- **Writes need `--yolo`:** without it, headless agy only *describes* edits and returns a confident success **without writing any files** ([issue #10](https://github.com/zhdenny/antigravity-for-omp/issues/10)). Pass `--yolo` for write tasks (on a branch).
 - **Native Windows (no ConPTY):** headless `agy -p` / `agy models` can hard-hang with a 0-byte log when stdio is redirected. The wrapper wraps agy in a wall-clock `timeout`/`gtimeout` guard so it returns a structured TIMEOUT (exit 12) instead of hanging; `doctor` reports the likely hang instead of a misleading "not authenticated". Without `timeout` on PATH there's no safety net — use **WSL/macOS/Linux** for headless delegation.
 - **WSL:** running agy with `--add-dir` on a Windows mount (`/mnt/c/...`) is very slow — agy reads the workspace over a 9p bridge, so even trivial calls can take 20s+. Keep the repo on the WSL Linux filesystem (`~`). The wrapper and `doctor` warn about this.
 
@@ -168,7 +167,7 @@ Delegation doesn't save money by itself — these do (also in the skill):
 ```
 extensions/index.ts      extension entry point (tools, commands, hooks)
 skills/antigravity/SKILL.md   WHEN + HOW the conductor collaborates with agy
-scripts/                  agy-delegate · agy-job · agy-cost-compare · cloud-debug · agy-trace · measure-session · doctor
+scripts/                  agy-delegate · agy-job · agy-cost-compare · agy-trace · measure-session · doctor
 hooks/policy-context.json cost-aware routing policy injected at session start
 docs/                     AB-RESULTS (measured A/B) · TROUBLESHOOTING · DEMO-KIT
 prices.json               Vertex rate config (verify before quoting)
@@ -198,4 +197,4 @@ Early-stage and MIT — issues, PRs, and ⭐ all welcome. See [CONTRIBUTING.md](
 
 ## ⚠️ Disclaimer
 
-Community project. **Not affiliated with, endorsed by, or supported by Google or Anthropic.** "Antigravity", "Gemini", "Claude", and "Claude Code" are trademarks of their respective owners. This plugin orchestrates the third-party `agy` CLI; you are responsible for your own API/cloud costs, credentials, and data-sharing choices. MIT licensed — see [LICENSE](LICENSE).
+Community project. **Not affiliated with, endorsed by, or supported by Google or Anthropic.** "Antigravity", "Gemini", "Claude", "oh-my-pi", and "omp" are trademarks of their respective owners. This plugin orchestrates the third-party `agy` CLI; you are responsible for your own API/cloud costs, credentials, and data-sharing choices. MIT licensed — see [LICENSE](LICENSE).

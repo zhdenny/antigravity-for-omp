@@ -1,7 +1,7 @@
 ---
 name: antigravity
 description: Run the Antigravity CLI (Gemini) as a collaborating AI inside omp, with intelligent model routing across the software development lifecycle. The conductor model (the frontier LLM) orchestrates — requirements, architecture, the hard 20%, verification, and review — and routes deterministic, high-volume work (scaffolding, boilerplate, test generation, first-pass review, migrations, web/Vertex AI Search) to Antigravity (Gemini), the cheaper, faster model. Use when the user wants to "use Antigravity / agy", "vibe code / agentic engineering", "accelerate the SDLC", "delegate to Gemini", "scaffold / generate tests / migrate", "first-pass code review", "search web or internal/company data", "deep research / multi-source research report", "second-model cross-check", or "lower token cost on a big job". Claude always verifies Antigravity's output and re-checks itself if unsatisfied.
-version: 0.16.1
+version: 0.17.0
 ---
 
 # Antigravity for oh-my-pi — hybrid SDLC
@@ -35,16 +35,16 @@ Route each phase to the right model. This is the core policy.
 
 | SDLC phase | Owner | Why |
 |---|---|---|
-| Requirements & planning | **Claude** | ambiguity, human-paced judgement |
-| Design & architecture | **Claude** | trade-offs; most human-centric |
-| Implementation — complex / architecture-bearing (the 20%) | **Claude** | correctness, deep context |
+| Requirements & planning | **conductor** | ambiguity, human-paced judgement |
+| Design & architecture | **conductor** | trade-offs; most human-centric |
+| Implementation — complex / architecture-bearing (the 20%) | **conductor** | correctness, deep context |
 | Implementation — scaffolding / boilerplate / well-specified | **agy** | deterministic, high volume |
-| Test & eval generation | **agy** (Claude defines the contract) | cheaper-model territory |
-| First-pass code review | **agy** → **Claude** final | AI as first-pass reviewer |
+| Test & eval generation | **agy** (conductor defines the contract) | cheaper-model territory |
+| First-pass code review | **agy** → **conductor** final | AI as first-pass reviewer |
 | Cross-model verification (output + trajectory) | **both** | two model families ≠ same failure |
-| Maintenance / migration / modernization | **agy** executes, **Claude** directs | tedious, systematic |
-| Web / Vertex AI Search | **agy** → **Claude** re-checks | tools Claude lacks natively |
-| Deep research (multi-source) | **agy** fans out search/fetch · **Claude** plans, verifies ≥2 sources, synthesizes | offload bulky pages to cheap Gemini; frontier model judges |
+| Maintenance / migration / modernization | **agy** executes, **conductor** directs | tedious, systematic |
+| Web / Vertex AI Search | **agy** → **conductor** re-checks | tools the conductor lacks natively |
+| Deep research (multi-source) | **agy** fans out search/fetch · **conductor** plans, verifies ≥2 sources, synthesizes | offload bulky pages to cheap Gemini; frontier model judges |
 
 Routing tier within agy: `flash` (default, bulk) · `flash-lo` (cheapest, trivial) ·
 `pro` (harder reasoning / reviews / cross-checks).
@@ -52,8 +52,8 @@ Routing tier within agy: `flash` (default, bulk) · `flash-lo` (cheapest, trivia
 **agy is multi-model.** Tiers map to Gemini by default, but you can point delegation at any
 model `agy models` lists (Claude / GPT on plans that expose them) — via `--model <exact name>`,
 or persistently with the `default_model` / `tier_*` plugin options. Keep the executor a
-*different, cheaper* model than the Claude conductor: that's what yields the cost saving **and**
-the cross-model verification value (Claude executing Claude loses both).
+*different, cheaper* model than the conductor: that's what yields the cost saving **and**
+the cross-model verification value (a model executing itself loses both).
 
 ## How to call it
 
@@ -89,7 +89,7 @@ finishes. (Backgrounding is only valid in an interactive session that will be re
 ## Shared harness: one AGENTS.md for both AIs
 
 agy **reads `AGENTS.md`** from the workspace (verified). Keep a single shared
-`AGENTS.md` at the repo root (stack, conventions, hard rules, workflow) so Claude and
+`AGENTS.md` at the repo root (stack, conventions, hard rules, workflow) so the conductor and
 Antigravity operate under the **same rules** — this raises agy's first-pass success
 rate and keeps output consistent (lower OpEx).
 
@@ -99,8 +99,8 @@ context).
 
 ## Verification gates (non-negotiable)
 
-Claude owns correctness. For anything that ships:
-1. **Define the contract first** — Claude writes/owns the tests and evals; they tell
+The conductor owns correctness. For anything that ships:
+1. **Define the contract first** — conductor writes/owns the tests and evals; they tell
    agy what "correct" means more precisely than prose.
 2. **Output eval = actually run it, don't stop at reading the code.** Reading the diff
    is necessary but NOT sufficient — a static review that "looks right" is still vibe
@@ -125,7 +125,7 @@ Claude owns correctness. For anything that ships:
    agy will, to make a check pass, **modify the environment itself** — e.g. patch the
    installed package in site-packages, or `MagicMock`-stub a missing dependency — and then
    report success. Before believing a passing test/eval: diff any touched tooling against a
-   pristine reference, restore it, and re-run the gate under Claude's own control. agy's
+   pristine reference, restore it, and re-run the gate under the conductor's own control. agy's
    self-reported pass is a claim, not evidence.
 If wrong: retry on `--tier pro`, sharpen the spec, or do that piece yourself.
 
@@ -139,38 +139,38 @@ commands** (`--yolo` grants write + terminal):
   catches the silent no-write).
 - Run it on a **dedicated git branch or worktree** so changes are isolated.
 - Add `--sandbox` for execution containment.
-- **Claude reviews the diff before merging** — never auto-merge agy's writes.
+- **The conductor reviews the diff before merging** — never auto-merge agy's writes.
 
 ## Cost discipline — where the savings actually come from
 
 Delegation does **not** save money by itself. Measured reality: on a small task the
-hybrid cost *more* than Claude-only, because the dominant cost was Claude's own
+hybrid cost *more* than conductor-only, because the dominant cost was the conductor's own
 `cache_read` — re-reading a large, growing context across many orchestration turns.
 The savings the "Gemini sub-agent" concept promises are real, but only when you keep
-Claude's context lean and the round-trips few. Apply these as hard rules:
+the conductor's context lean and the round-trips few. Apply these as hard rules:
 
 1. **Delegate above the break-even, not below.** Hand work to agy only when the offloaded
    volume **clearly exceeds** the spec-writing + round-trip + verification overhead it
    adds. Bulk/parallel/repetitive (mass migration, exhaustive tests, fan-out research,
    long-context reads that return a small digest) = delegate. Small, self-contained, or
    judgement-heavy = just do it yourself. (Delegating a tiny task is a *net loss*.)
-2. **Keep Claude's context lean (the biggest lever).** Do **not** pull the files agy
-   already handled (`--dir`) back into Claude's context, and do **not** paste agy's raw
-   bulky output into the thread. Claude ingests a **digest**, not raw content — this is
+2. **Keep the conductor's context lean (the biggest lever).** Do **not** pull the files agy
+   already handled (`--dir`) back into the conductor's context, and do **not** paste agy's raw
+   bulky output into the thread. the conductor ingests a **digest**, not raw content — this is
    what collapses the per-turn `cache_read` that made the hybrid expensive.
 3. **Make agy return a digest, not a dump.** End every delegation prompt with an explicit
    trailer instruction, e.g.:
    `"...End with a fenced block ===DIGEST=== listing: files changed, key decisions, and a 1-paragraph 'context for next step'. Put bulky detail ONLY in files, not in your reply."`
-   Claude reads the DIGEST; the bulky work stays on cheap Gemini tokens.
+   the conductor reads the DIGEST; the bulky work stays on cheap Gemini tokens.
 4. **Batch, don't chatter.** One large, fully-specified delegation beats many small
    round-trips (each round-trip re-reads context = `cache_read` tax).
 5. **Review the diff, not the whole tree.** `git diff` is compact; reading every file is
    not.
 6. **Hold state on the cheap side.** For multi-step jobs, keep an agy session with
-   `--continue` / `--conversation <id>` so the working context lives in Gemini, and Claude
+   `--continue` / `--conversation <id>` so the working context lives in Gemini, and the conductor
    passes deltas instead of re-supplying everything.
 7. **Asymmetric effort.** The conductor doesn't need max reasoning effort to coordinate +
-   verify; run Claude at a moderate effort and let the cheap workers do the volume.
+   verify; run the conductor at a moderate effort and let the cheap workers do the volume.
 8. **Don't fight the prompt-cache TTL on small tasks (measured trap).** The 5-min cache
    expires while you wait on a long agy delegation, so the next turn pays `cache_create`
    (1.25× input) instead of `cache_read` (0.1×). It's tempting to "keep the cache warm"
@@ -178,9 +178,9 @@ Claude's context lean and the round-trips few. Apply these as hard rules:
    frontier `output` (5× input), the most expensive class, and net cost goes *up*. Do NOT
    manufacture work to stay warm. Backgrounding a long delegation (via `agy_job`)
    avoids *blocking*, but it does not make a small task cheaper. The only real
-   fix is **scale**: make each delegation big enough that the displaced Claude output
+   fix is **scale**: make each delegation big enough that the displaced conductor output
    dwarfs the one-time re-cache cost. Below the break-even, the hybrid loses on cost — three
-   optimization variants were tested on a small task and none beat solo Claude (see
+   optimization variants were tested on a small task and none beat the solo conductor (see
    `docs/AB-RESULTS.md`). Delegate for cost reasons only at scale.
 
 Honest framing for any cost claim: there is **no flat 8×/46%**. Below the break-even the
@@ -193,15 +193,15 @@ Use `agy-cost-compare` for the per-token gap (estimate; set real Vertex rates fi
 ```bash
 ROOT=agy-delegate
 
-# Scaffold from a spec (Claude wrote the spec/architecture)
+# Scaffold from a spec (conductor wrote the spec/architecture)
 "$ROOT" --tier pro --yolo --sandbox --dir ./app \
   "Scaffold per ARCHITECTURE.md: dirs, configs, stub modules. Follow AGENTS.md."
 
-# Generate tests for a contract Claude defined
+# Generate tests for a contract the conductor defined
 "$ROOT" --tier flash --yolo --dir ./app \
   "Write unit + edge-case tests for src/payments.py covering the cases in SPEC.md."
 
-# First-pass review (Claude does the final pass)
+# First-pass review (conductor does the final pass)
 "$ROOT" --tier pro "Review for bugs/security/perf, be skeptical. List file:line: <diff>"
 
 # Implement-until-tests-pass (feedback loop; isolate on a branch)
@@ -212,7 +212,7 @@ ROOT=agy-delegate
 "$ROOT" --tier pro --yolo --sandbox --dir ./svc \
   "Migrate all callers from APIv1 to APIv2 per MIGRATION.md. List every file changed."
 
-# Web search → Claude re-checks
+# Web search → conductor re-checks
 "$ROOT" --tier pro --yolo "Use web search for <X>. Give URLs + dates."
 
 # Vertex AI Search over internal data (discover engines, then query)
@@ -237,7 +237,7 @@ while we tracked it), so re-verify after any agy upgrade:
   (upstream #105). Invoke TypeName `self` and inject the specialty via `Role` +
   `Prompt` — verified on 1.0.12 **and re-verified on 1.0.16**.
 
-Use it for **orchestrator-mode work pushed down a level**: instead of Claude dispatching
+Use it for **orchestrator-mode work pushed down a level**: instead of the conductor dispatching
 N parallel `agy-job` runs (N round-trips, coordination spend on the frontier side), send
 ONE delegation and let agy fan out internally — the coordination tokens land on the
 cheap side, and you ingest a single digest.
@@ -276,7 +276,7 @@ raise `--timeout`, and in an interactive session prefer a background job (`agy-j
 agy has **no built-in "Deep Research" mode** — that product lives in the Gemini app
 and the Gemini API's managed Deep Research Agent, **not the CLI** (verified). But agy
 *can* do genuine multi-step, cited web research via its agentic loop. So deep research
-is a **Claude-orchestrated recipe**, not a single agy call. Pair it with Claude's own
+is a **conductor-orchestrated recipe**, not a single agy call. Pair it with the conductor's own
 `deep-research` skill as planner/verifier; agy is the cheap, grounded legwork worker.
 
 Caveat that shapes the recipe (verified empirically): in `--print` mode agy uses
@@ -285,10 +285,10 @@ coarse (often domain-level) and may not actually support the claim. It can also 
 parametric "knowledge" disguised as a sourced fact. **Never ship its citations
 unverified.**
 
-1. **Plan (Claude).** Decompose into sub-questions + an explicit list of load-bearing
-   claims to verify. Claude owns scope and final synthesis.
+1. **Plan (conductor).** Decompose into sub-questions + an explicit list of load-bearing
+   claims to verify. The conductor owns scope and final synthesis.
 2. **Fan-out fetch (agy, cheap, parallel).** One call per sub-question; force compact
-   stdout so bulky pages stay in Gemini's context, not Claude's:
+   stdout so bulky pages stay in Gemini's context, not the conductor's:
    ```bash
    "$ROOT" --tier flash --yolo \
      "Use web search for <sub-question>. Return 5-8 bullet findings, each with the
@@ -301,18 +301,18 @@ unverified.**
      "Open <URL> and quote the exact sentence(s) supporting: '<claim>'.
       If the page does not support it, reply NOT SUPPORTED."
    ```
-4. **Adversarial verify (Claude).** Corroborate each key claim across ≥2 independent
+4. **Adversarial verify (conductor).** Corroborate each key claim across ≥2 independent
    domains; treat any single/vague/domain-only citation as unverified; sanity-check
    dates; watch for Gemini parametric knowledge masquerading as a sourced fact.
-5. **Synthesize (Claude).** Write the final cited report from verified findings only;
+5. **Synthesize (conductor).** Write the final cited report from verified findings only;
    mark anything uncorroborated as "unverified."
 
-Iteration is Claude's job: `--print` does one agentic pass per call (no auto re-query
-when evidence is thin), so Claude must re-dispatch follow-up agy calls to close gaps.
+Iteration is the conductor's job: `--print` does one agentic pass per call (no auto re-query
+when evidence is thin), so the conductor must re-dispatch follow-up agy calls to close gaps.
 Token economics: bulky searched/fetched text is paid in cheap Gemini tokens and
-distilled to bullets+URLs before reaching Claude — use `agy-cost-compare` to show it.
+distilled to bullets+URLs before reaching the conductor — use `agy-cost-compare` to show it.
 
-## What Antigravity brings that Claude lacks natively
+## What Antigravity brings that the conductor lacks natively
 
 Built-in Google tools (MCP), verified working in headless `--print` mode:
 - **Google / web search** — current, grounded info.
@@ -325,14 +325,14 @@ search/list tools are read-only so this is low-risk.
 
 ## Economics (a financial lever, not the headline)
 
-Routing deterministic, high-volume work to Gemini Flash (≪ Claude per token) is
+Routing deterministic, high-volume work to Gemini Flash (≪ the conductor per token) is
 **intelligent model routing**: higher CapEx (this harness) for lower OpEx (cheap model
 does the bulk). Use the cost demo as observability:
 ```bash
 agy-cost-compare --tier flash "the task prompt"
 ```
 Estimates only (chars/4; agy exposes no token API in print mode). Set real Vertex rates
-via `CLAUDE_IN_PER_M`, `CLAUDE_OUT_PER_M`, `GEMINI_IN_PER_M`, `GEMINI_OUT_PER_M`.
+via `OMP_IN_PER_M`, `OMP_OUT_PER_M`, `GEMINI_IN_PER_M`, `GEMINI_OUT_PER_M`.
 
 ## Prerequisites & limits
 

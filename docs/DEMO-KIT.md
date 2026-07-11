@@ -106,6 +106,10 @@ DELETE when done (billable): `agent_engines.get(<resource>).delete(force=True)`.
 
 ## 2. The three arms
 
+> **Note:** these commands reflect the original benchmark run (Claude Code + Claude Opus).
+> To reproduce with omp, replace `claude` with `omp` and adjust flags accordingly.
+> The plugin and delegation workflow are identical.
+
 Pin the SAME model everywhere; vary only what each arm is meant to vary. Save each session id.
 
 ```bash

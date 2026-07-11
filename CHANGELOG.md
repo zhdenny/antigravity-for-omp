@@ -1,7 +1,22 @@
 # Changelog
 
-All notable changes to **Antigravity for Claude Code**. Format loosely follows
-[Keep a Changelog](https://keepachangelog.com/); versions are in `.claude-plugin/plugin.json`.
+All notable changes to **Antigravity for oh-my-pi**. Format loosely follows
+[Keep a Changelog](https://keepachangelog.com/); versions are in `package.json`.
+
+## 0.17.0
+- **Removed `/antigravity-cloud-run-debug` command** and its backing `scripts/cloud-debug.sh`.
+  The command was a GCP Cloud Run-specific diagnostic tool (requiring `gcloud` CLI, a GCP
+  project, and `roles/logging.viewer`) that didn't fit an omp-local-workflow plugin. Tests,
+  doctor, and README were updated accordingly.
+- **Claude → omp naming cleanup**: this project is now exclusively for oh-my-pi, not Claude
+  Code. All internal env vars (`CLAUDE_PLUGIN_OPTION_*` → `OMP_PLUGIN_OPTION_*`,
+  `CLAUDE_PLUGIN_ROOT` → `OMP_PLUGIN_ROOT`, `CLAUDE_IN_PER_M` → `OMP_IN_PER_M`), script
+  comments, skill documentation, troubleshooting guides, and issue templates were updated
+  to reference omp/oh-my-pi instead of Claude Code. The conductor/orchestrator role
+  (previously called "Claude") is now referred to as "the conductor" throughout.
+  `measure-session.py` was updated to read omp session transcripts
+  (`~/.omp/agent/sessions`) instead of Claude Code's `~/.claude/projects`.
+  No functional behavior changed; this is purely a naming and documentation cleanup.
 
 ## 0.16.1
 - **Internal fan-out recipe updated for agy 1.0.16** (re-verified per the recipe's own
@@ -26,7 +41,7 @@ All notable changes to **Antigravity for Claude Code**. Format loosely follows
     `~/.gemini/antigravity-cli/brain/<conversationId>/` — unlike the opaque conversation
     `.db` blobs. New **`agy-trace`** (script + bin shim) pretty-prints one (`agy-trace
     <conversationId>`), lists recent ones (`--list`), or emits raw JSONL (`--raw`) so
-    Claude can run a real trajectory audit on what subagents actually did.
+    the conductor can run a real trajectory audit on what subagents actually did.
   - Skill's trajectory-check gate updated accordingly; `doctor` covers the new script/shim.
 - **`--digest` flag + digest-size guard** — the cost discipline's biggest lever ("ingest
   digests, not dumps") is now enforced in code, not just prose
@@ -47,18 +62,18 @@ All notable changes to **Antigravity for Claude Code**. Format loosely follows
     no-write without `--yolo`, exit-code/`AGY_SIGNAL` table, tier remaps, updating.
 
 ## 0.15.1
-- **Injected routing policy no longer references `$CLAUDE_PLUGIN_ROOT`**
+- **Injected routing policy no longer references `$OMP_PLUGIN_ROOT`**
   ([#15](https://github.com/yuting0624/antigravity-for-claude-code/issues/15), fix by
   **@Masterisk-F** in #16): the SessionStart `additionalContext` in
   `hooks/policy-context.json` still told the model to run
-  `"$CLAUDE_PLUGIN_ROOT/scripts/agy-delegate.sh"` — but that variable isn't exported to
+  `"$OMP_PLUGIN_ROOT/scripts/agy-delegate.sh"` — but that variable isn't exported to
   model-run Bash (same root cause as #11), so it expanded empty and the model had to
   rediscover the `bin/` entrypoint. Now uses the bare `agy-delegate` bin name. (The #11
   bin/ migration updated commands/skill/agents but missed this injected string.)
   - This ships as a **version bump** so `/plugin marketplace update` recognizes the fix —
     #16 landed on `master` without one, leaving installs on 0.15.0 unable to see it.
 - **Regression guard widened**: the contract test now also fails if any SessionStart
-  `additionalContext` references `$CLAUDE_PLUGIN_ROOT` (not just commands/skill markdown),
+  `additionalContext` references `$OMP_PLUGIN_ROOT` (not just commands/skill markdown),
   so this class of bug can't recur in injected context.
 - **Version-drift guard**: the contract test now asserts `SKILL.md`'s `version:` matches
   `plugin.json` — they had drifted (skill stuck at 0.14.0 while the plugin was 0.15.0);
@@ -68,9 +83,9 @@ All notable changes to **Antigravity for Claude Code**. Format loosely follows
 - **New command — `/antigravity:cloud-run-debug`** (Conductor/Executor demo): diagnose a failing
   Cloud Run service. agy (Gemini) does the bulk, cheap work — pulling `severity>=ERROR` logs via
   `gcloud logging read` and clustering them into a structured digest (error clusters /
-  representative stack traces / time distribution / likely root-cause candidates) — and Claude
+  representative stack traces / time distribution / likely root-cause candidates) — and the conductor
   ingests only that digest to infer the root cause and propose a fix. The lean handoff keeps
-  Claude's context (and cost) down.
+  the conductor's context (and cost) down.
   - **Read-only by default** — diagnosis + proposal only. `--apply` is the only write path, and it
     only ever lands the fix on a dedicated branch with the diff shown for a human to review/merge;
     nothing is deployed or merged automatically.
@@ -96,12 +111,12 @@ All notable changes to **Antigravity for Claude Code**. Format loosely follows
     permission-denied paths.
 
 ## 0.14.0
-- **`bin/` entrypoints — fixes `$CLAUDE_PLUGIN_ROOT` failures on marketplace installs**
+- **`bin/` entrypoints — fixes `$OMP_PLUGIN_ROOT` failures on marketplace installs**
   ([#11](https://github.com/yuting0624/antigravity-for-claude-code/issues/11)):
-  `$CLAUDE_PLUGIN_ROOT` is only substituted in structured config (hooks/MCP/LSP) and is
+  `$OMP_PLUGIN_ROOT` is only substituted in structured config (hooks/MCP/LSP) and is
   **not** exported to model-run Bash — so commands/skills that ran
-  `"$CLAUDE_PLUGIN_ROOT/scripts/…"` expanded to an empty path and failed. Scripts are now
-  invoked by **bare name via `bin/` shims** (Claude Code adds a plugin's `bin/` to the
+  `"$OMP_PLUGIN_ROOT/scripts/…"` expanded to an empty path and failed. Scripts are now
+  invoked by **bare name via `bin/` shims** (omp adds a plugin's `bin/` to the
   Bash-tool PATH): `agy-delegate` / `agy-job` / `agy-cost-compare` / `agy-doctor`. Commands,
   the skill, and the delegate subagent were updated; the PreToolUse gate accepts the bin
   names; `doctor` checks the shims. (`scripts/` is unchanged — the shims forward to it.)
@@ -135,7 +150,7 @@ All notable changes to **Antigravity for Claude Code**. Format loosely follows
 - **Configurable executor model** (agy is multi-model): tiers still default to Gemini, but
   each is remappable to any `agy models` entry (Claude/GPT on plans that expose them) via
   `tier_flash` / `tier_flash_lo` / `tier_pro`, plus a `default_model` (exact name) option —
-  all `CLAUDE_PLUGIN_OPTION_*`. Precedence: `--model` > explicit `--tier` > `default_model`
+  all `OMP_PLUGIN_OPTION_*`. Precedence: `--model` > explicit `--tier` > `default_model`
   > default tier. Keeps Gemini as the recommended default (a different/cheaper executor is
   what yields the cost + cross-model-verification benefit).
 - **doctor**: tier-model check now respects the remaps and **warns instead of failing** when a
@@ -151,21 +166,21 @@ All notable changes to **Antigravity for Claude Code**. Format loosely follows
 ## 0.11.0
 - **Auto-injected routing policy** (`hooks/`): a `SessionStart` hook injects the
   plugin's **cost-aware** routing policy as session context (delegate above the
-  break-even, keep Claude's context lean, always verify) so the discipline applies
+  break-even, keep the conductor's context lean, always verify) so the discipline applies
   without invoking the skill. Toggle via the `coding_policy` plugin option. A second
   hook does a fast `agy` presence/auth check on session start.
 - **Delegation subagent** (`agents/antigravity-delegate.md`): `tools: Bash, Read, Glob`
   with a `PreToolUse` gate (`hooks/validate-delegate-bash.sh`) that permits only the
   delegation wrapper — no `Write`/`Edit`, no arbitrary Bash — so file *writing* runs on
-  agy/Gemini (no Claude tokens spent generating file contents); it returns a digest for
-  Claude to verify.
+  agy/Gemini (no conductor tokens spent generating file contents); it returns a digest for
+  the conductor to verify.
 - **Structured exit codes + signal**: `agy-delegate.sh` now classifies failures into
   `10` quota · `11` auth · `12` timeout · `13` agy-missing and prints a machine-readable
   `AGY_SIGNAL {...}` line; `agy-job.sh` surfaces the code/label/signal in `status`/`result`.
 - **Plugin options** (`userConfig`): `default_tier`, `timeout`, `coding_policy` — read by
-  the wrapper/hook via `CLAUDE_PLUGIN_OPTION_*` (explicit flags still override).
-- **`/antigravity:research`** command: surfaces the skill's Claude-orchestrated deep-research
-  recipe — agy fans out grounded web search (compact digests), Claude verifies each
+  the wrapper/hook via `OMP_PLUGIN_OPTION_*` (explicit flags still override).
+- **`/antigravity:research`** command: surfaces the skill's conductor-orchestrated deep-research
+  recipe — agy fans out grounded web search (compact digests), the conductor verifies each
   load-bearing claim across ≥2 independent sources and synthesizes a cited report.
 - **`--print-command`** (agy-delegate dry run): prints the resolved `agy …` invocation
   without executing — for debugging/trust; works even without agy installed.

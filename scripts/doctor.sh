@@ -38,7 +38,7 @@ on_windows_native() {
   return 1
 }
 
-echo "Antigravity for Claude Code — doctor"
+echo "Antigravity for oh-my-pi — doctor"
 
 # 1. agy on PATH
 if command -v agy >/dev/null 2>&1; then
@@ -76,15 +76,15 @@ if command -v agy >/dev/null 2>&1; then
     ok "agy authenticated — $(printf '%s' "$MODELS" | grep -c . ) models available"
     # 2b. configured tier->model names exist (respecting userConfig remaps). agy is
     # multi-model and plan-dependent, so a miss is a WARNING, not a failure.
-    FLASH="${CLAUDE_PLUGIN_OPTION_TIER_FLASH:-Gemini 3.5 Flash (High)}"
-    FLASH_LO="${CLAUDE_PLUGIN_OPTION_TIER_FLASH_LO:-Gemini 3.5 Flash (Low)}"
-    PRO="${CLAUDE_PLUGIN_OPTION_TIER_PRO:-Gemini 3.1 Pro (High)}"
+    FLASH="${OMP_PLUGIN_OPTION_TIER_FLASH:-Gemini 3.5 Flash (High)}"
+    FLASH_LO="${OMP_PLUGIN_OPTION_TIER_FLASH_LO:-Gemini 3.5 Flash (Low)}"
+    PRO="${OMP_PLUGIN_OPTION_TIER_PRO:-Gemini 3.1 Pro (High)}"
     for m in "$FLASH" "$FLASH_LO" "$PRO"; do
       if printf '%s' "$MODELS" | grep -qF "$m"; then
         ok "tier model present: $m"
       else
         warn "tier model not in 'agy models': $m"
-        info "agy is multi-model/plan-dependent — remap tiers via CLAUDE_PLUGIN_OPTION_TIER_* (or set _DEFAULT_MODEL), or pass --model <name from \`agy models\`)"
+        info "agy is multi-model/plan-dependent — remap tiers via OMP_PLUGIN_OPTION_TIER_* (or set _DEFAULT_MODEL), or pass --model <name from \`agy models\`)"
       fi
     done
   elif [ "$AGY_TIMED_OUT" -eq 0 ]; then
@@ -107,7 +107,7 @@ else
 fi
 
 # 4. plugin scripts executable
-for s in agy-delegate.sh agy-cost-compare.sh cloud-debug.sh agy-trace.sh; do
+for s in agy-delegate.sh agy-cost-compare.sh agy-trace.sh; do
   if [ -x "$HERE/$s" ]; then ok "$s executable"; else
     bad "$s not executable"; info "fix: chmod +x \"$HERE/$s\""
   fi

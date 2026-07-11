@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""measure-session.py — token + tool accounting for one Claude Code session.
+"""measure-session.py — token + tool accounting for one omp session.
 
 Usage:
     python3 measure-session.py <session.jsonl> [label]
 
-Finds the session transcript under ~/.claude/projects/**/<id>.jsonl if you pass a
-bare session id instead of a path. Prints the Claude-side token breakdown (exact)
-and tool-call counts. NOTE: this measures the CLAUDE side only — agy/Gemini tokens
+Finds the session transcript under ~/.omp/agent/sessions/**/<id>.jsonl if you pass a
+bare session id instead of a path. Prints the conductor-side token breakdown (exact)
+and tool-call counts. NOTE: this measures the conductor side only — agy/Gemini tokens
 are not exposed by `agy --print`, so the cheap-side cost must be priced separately.
 """
 import json, os, sys, glob
@@ -25,7 +25,7 @@ def load_prices():
 def resolve(arg):
     if os.path.isfile(arg):
         return arg
-    base = os.path.expanduser("~/.claude/projects")
+    base = os.path.expanduser("~/.omp/agent/sessions")
     exact = glob.glob(f"{base}/**/{arg}.jsonl", recursive=True)
     if exact:
         return exact[0]
@@ -49,17 +49,17 @@ def measure(path):
         c = m.get("content")
         if isinstance(c, list):
             for b in c:
-                if isinstance(b, dict) and b.get("type") == "tool_use":
+                if isinstance(b, dict) and b.get("type") == "toolCall":
                     n = b.get("name", "?")
                     tools[n] = tools.get(n, 0) + 1
         u = m.get("usage")
         if not u:
             continue
         turns += 1
-        ti += u.get("input_tokens", 0)
-        to += u.get("output_tokens", 0)
-        tcc += u.get("cache_creation_input_tokens", 0)
-        tcr += u.get("cache_read_input_tokens", 0)
+        ti += u.get("input", 0)
+        to += u.get("output", 0)
+        tcc += u.get("cacheWrite", 0)
+        tcr += u.get("cacheRead", 0)
     return dict(turns=turns, input=ti, output=to, cache_create=tcc, cache_read=tcr,
                 total=ti + to + tcc + tcr, tools=tools)
 
@@ -72,7 +72,7 @@ if __name__ == "__main__":
         print(f"session not found: {sys.argv[1]}"); sys.exit(1)
     r = measure(path)
     # cost-weighted units, normalized to input=1: output 5x, cache_write 1.25x,
-    # cache_read 0.1x (standard Claude multipliers; absolute $ varies by model).
+    # cache_read 0.1x (standard conductor-model multipliers; absolute $ varies by model).
     weighted = (r['output'] * 5 + r['input'] * 1 +
                 r['cache_create'] * 1.25 + r['cache_read'] * 0.1)
     print(f"=== {label} ===")

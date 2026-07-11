@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 #
 # agy-job.sh — background-job layer over agy-delegate.sh, à la `codex --background`.
-# For INTERACTIVE Claude Code sessions: fire a long delegation, keep working, then
-# poll :status / fetch :result. (Headless `claude -p` is one-shot — use the wrapper
+# For INTERACTIVE omp sessions: fire a long delegation, keep working, then
+# poll :status / fetch :result. (Headless `omp -p` is one-shot — use the wrapper
 # synchronously there instead; there is no later turn to collect the result.)
 #
 # Usage:

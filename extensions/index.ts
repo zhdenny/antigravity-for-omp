@@ -6,14 +6,14 @@ export default function antigravity(pi: ExtensionAPI) {
   const PLUGIN_ROOT = resolve(dirname(new URL(import.meta.url).pathname), "..");
   const SCRIPTS = join(PLUGIN_ROOT, "scripts");
 
-  // Default env vars the shell scripts expect (CLAUDE_PLUGIN_OPTION_* pattern preserved
+  // Default env vars the shell scripts expect (OMP_PLUGIN_OPTION_* pattern preserved
   // so the existing scripts work unmodified). Override via OMP plugin settings.
   function scriptEnv(): Record<string, string> {
     return {
       ...process.env as Record<string, string>,
-      CLAUDE_PLUGIN_ROOT: PLUGIN_ROOT,
-      CLAUDE_PLUGIN_OPTION_DEFAULT_TIER: "flash",
-      CLAUDE_PLUGIN_OPTION_TIMEOUT: "5m",
+      OMP_PLUGIN_ROOT: PLUGIN_ROOT,
+      OMP_PLUGIN_OPTION_DEFAULT_TIER: "flash",
+      OMP_PLUGIN_OPTION_TIMEOUT: "5m",
     };
   }
 
@@ -295,25 +295,6 @@ export default function antigravity(pi: ExtensionAPI) {
             `3. **Deepen (agy).** For each load-bearing claim, have agy quote the supporting text.\n` +
             `4. **Adversarially verify (you).** Corroborate each key claim across ≥2 independent domains.\n` +
             `5. **Synthesize (you).** Write a cited report from verified findings only.`,
-          display: true,
-          attribution: "user",
-        },
-        { triggerTurn: true }
-      );
-    },
-  });
-
-  pi.registerCommand("antigravity-cloud-run-debug", {
-    description: "Diagnose a failing Cloud Run service — agy digests logs, you infer root cause + fix",
-    handler: async (args, ctx) => {
-      pi.sendMessage(
-        {
-          customType: "antigravity-command",
-          content:
-            `Diagnose a Cloud Run service failure using Antigravity for log digestion and Cloud Logging.\n\n` +
-            `Arguments: ${args}\n\n` +
-            `Run \`cloud-debug\` script with the provided arguments via \`agy_delegate\` (pro tier, --yolo).\n` +
-            `Parse the results, infer the root cause, propose a fix. Read-only by default.`,
           display: true,
           attribution: "user",
         },

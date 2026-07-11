@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # agy-cost-compare.sh — run ONE task on agy (Gemini), then show what that same
-# token volume would cost on Claude vs on Gemini Flash. A demo aid for the
+# token volume would cost on the conductor model vs on Gemini Flash. A demo aid for the
 # "let the cheap model do the bulk tokens" hypothesis.
 #
 # HONEST SCOPE / CAVEATS:
@@ -9,8 +9,8 @@
 #     ESTIMATED from character count (chars / CHARS_PER_TOKEN). They are ballpark,
 #     not billing-accurate.
 #   * This prices the SAME measured volume at both price decks to visualize the
-#     per-token price gap. The REAL saving in practice is larger, because Claude
-#     as an orchestrator processes far fewer tokens than Claude doing everything.
+#     per-token price gap. The REAL saving in practice is larger, because the conductor
+#     as an orchestrator processes far fewer tokens than the conductor doing everything.
 #   * Prices below are PLACEHOLDERS. Override with the real Vertex rates for your
 #     project before quoting numbers to anyone. Per 1M tokens, in USD.
 #
@@ -18,7 +18,7 @@
 #   agy-cost-compare.sh [-t flash|flash-lo|pro] "the task prompt"
 #
 # Env overrides (USD per 1M tokens):
-#   CLAUDE_IN_PER_M  CLAUDE_OUT_PER_M     (default: 5 / 25   -- VERIFY!)
+#   OMP_IN_PER_M  OMP_OUT_PER_M     (default: 5 / 25   -- VERIFY!)
 #   GEMINI_IN_PER_M  GEMINI_OUT_PER_M     (default: 0.30 / 2.50 -- VERIFY!)
 #   CHARS_PER_TOKEN                       (default: 4)
 #
@@ -53,8 +53,8 @@ except Exception: pass
 PY
 )"
 fi
-CLAUDE_IN_PER_M="${CLAUDE_IN_PER_M:-${_CIN:-5}}"
-CLAUDE_OUT_PER_M="${CLAUDE_OUT_PER_M:-${_COUT:-25}}"
+OMP_IN_PER_M="${OMP_IN_PER_M:-${_CIN:-5}}"
+OMP_OUT_PER_M="${OMP_OUT_PER_M:-${_COUT:-25}}"
 GEMINI_IN_PER_M="${GEMINI_IN_PER_M:-${_GIN:-1.50}}"
 GEMINI_OUT_PER_M="${GEMINI_OUT_PER_M:-${_GOUT:-9.00}}"
 CPT="${CHARS_PER_TOKEN:-4}"
@@ -71,7 +71,7 @@ IN_CHARS=${#PROMPT}
 OUT_CHARS=${#OUT}
 
 awk -v ic="$IN_CHARS" -v oc="$OUT_CHARS" -v cpt="$CPT" \
-    -v cin="$CLAUDE_IN_PER_M" -v cout="$CLAUDE_OUT_PER_M" \
+    -v cin="$OMP_IN_PER_M" -v cout="$OMP_OUT_PER_M" \
     -v gin="$GEMINI_IN_PER_M" -v gout="$GEMINI_OUT_PER_M" \
     -v el="$ELAPSED" 'BEGIN {
   it = ic / cpt; ot = oc / cpt;
@@ -84,12 +84,12 @@ awk -v ic="$IN_CHARS" -v oc="$OUT_CHARS" -v cpt="$CPT" \
   printf "output ~%d tokens (%d chars)\n", ot, oc;
   printf "elapsed: %ds\n\n", el;
   printf "%-14s %12s %12s\n", "deck", "in $/1M", "out $/1M";
-  printf "%-14s %12.2f %12.2f\n", "Claude", cin, cout;
+  printf "%-14s %12.2f %12.2f\n", "Conductor", cin, cout;
   printf "%-14s %12.2f %12.2f\n\n", "Gemini Flash", gin, gout;
-  printf "if priced as Claude: $%.6f\n", cc;
+  printf "if priced as the conductor: $%.6f\n", cc;
   printf "actual on Gemini   : $%.6f\n", gc;
   printf "saved on this task : $%.6f  (%.1fx cheaper)\n", save, ratio;
-  printf "NOTE: real saving is larger — orchestrator Claude handles far fewer tokens.\n";
+  printf "NOTE: real saving is larger — the conductor handles far fewer tokens.\n";
 }'
 
 echo ""
