@@ -10,5 +10,5 @@
   "omp": {
     "extensions": ["./extensions/index.ts"]
   },
-  "files": ["extensions/", "skills/", "scripts/", "hooks/", "hooks/policy-context.json", "prices.json"]
+  "files": ["bin/", "extensions/", "skills/", "scripts/", "hooks/", "hooks/policy-context.json", "prices.json"]
 }

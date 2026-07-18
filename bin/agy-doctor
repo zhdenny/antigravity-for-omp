@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# shim — forwards to scripts/doctor.sh
+HERE="$(cd "$(dirname "$0")" && pwd)"
+ROOT="$(cd "$HERE/.." && pwd)"
+exec "$ROOT/scripts/doctor.sh" "$@"

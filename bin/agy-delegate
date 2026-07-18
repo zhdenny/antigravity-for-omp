@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# shim — forwards to scripts/agy-delegate.sh
+# omp adds the plugin's bin/ to the Bash-tool PATH so the model invokes
+# these by bare name. $OMP_PLUGIN_ROOT is not exported to model Bash.
+HERE="$(cd "$(dirname "$0")" && pwd)"
+ROOT="$(cd "$HERE/.." && pwd)"
+exec "$ROOT/scripts/agy-delegate.sh" "$@"

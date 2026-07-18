@@ -9,14 +9,50 @@ export default function antigravity(pi: ExtensionAPI) {
   // Default env vars the shell scripts expect (OMP_PLUGIN_OPTION_* pattern preserved
   // so the existing scripts work unmodified). Override via OMP plugin settings.
   function scriptEnv(): Record<string, string> {
-    return {
-      ...process.env as Record<string, string>,
-      OMP_PLUGIN_ROOT: PLUGIN_ROOT,
-      OMP_PLUGIN_OPTION_DEFAULT_TIER: "flash",
-      OMP_PLUGIN_OPTION_TIMEOUT: "5m",
-    };
+    const env = { ...process.env as Record<string, string> };
+    env.OMP_PLUGIN_ROOT = PLUGIN_ROOT;
+    if (!env.OMP_PLUGIN_OPTION_DEFAULT_TIER) env.OMP_PLUGIN_OPTION_DEFAULT_TIER = "flash";
+    if (!env.OMP_PLUGIN_OPTION_TIMEOUT) env.OMP_PLUGIN_OPTION_TIMEOUT = "5m";
+    return env;
   }
 
+
+  // Parse a duration string like "5m", "300s", "1h" to whole seconds.
+  // Returns fallback on unparseable input.
+  function parseTimeoutSecs(raw: string | undefined, fallback: number): number {
+    if (!raw) return fallback;
+    const m = raw.trim().match(/^(\d+)\s*([smh]?)$/);
+    if (!m) return fallback;
+    const n = parseInt(m[1], 10);
+    switch (m[2]) {
+      case "h": return n * 3600;
+      case "m": return n * 60;
+      default:  return n;          // "s" or bare number
+    }
+  }
+
+  // Race a promise against a wall-clock timeout. If the AbortSignal fires first,
+  // the timer is cleared so we don't reject after the signal already handled it.
+  function raceWithTimeout<T>(
+    promise: Promise<T>,
+    secs: number,
+    signal?: AbortSignal,
+  ): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+      const timer = setTimeout(() => {
+        reject(new Error(`defensive timeout after ${secs}s — the child process may still be running`));
+      }, secs * 1000);
+
+      if (signal) {
+        signal.addEventListener("abort", () => clearTimeout(timer), { once: true });
+      }
+
+      promise.then(
+        (val) => { clearTimeout(timer); resolve(val); },
+        (err) => { clearTimeout(timer); reject(err); },
+      );
+    });
+  }
   // ── A. Session-start hook: check agy + inject cost-aware policy ──
   pi.on("session_start", async (_event, ctx) => {
     // 1) Lightweight agy check (warns, never fails — mirrors hooks/check-agy.sh)
@@ -118,13 +154,24 @@ export default function antigravity(pi: ExtensionAPI) {
       if (params.model) args.push("--model", params.model);
       args.push(params.task);
 
+      // Parse the configured timeout to compute a defensive outer guard.
+      // The script has its own wall-clock guard (timeout + 25% headroom + 10s
+      // kill-after). This outer guard is a last-resort safety net in case
+      // pi.exec doesn't handle the framework's AbortSignal — it guarantees we
+      // never hang the session forever. Sized to fire AFTER the script's guard.
+      const timeoutStr = params.timeout ?? scriptEnv().OMP_PLUGIN_OPTION_TIMEOUT ?? "5m";
+      const scriptSecs = parseTimeoutSecs(timeoutStr, 300);
+      const guardSecs = Math.max(Math.ceil(scriptSecs * 1.5) + 30, 60);
+
       delegateActive = true;
       try {
-        const result = await pi.exec(join(SCRIPTS, "agy-delegate.sh"), args, {
+        const execPromise = pi.exec(join(SCRIPTS, "agy-delegate.sh"), args, {
           signal,
           cwd: ctx.cwd,
           env: scriptEnv(),
         });
+
+        const result = await raceWithTimeout(execPromise, guardSecs, signal);
         delegateActive = false;
 
         const stdout = result.stdout.trim();
@@ -175,11 +222,16 @@ export default function antigravity(pi: ExtensionAPI) {
         if (params.id) args.push(params.id);
       }
 
-      const result = await pi.exec(join(SCRIPTS, "agy-job.sh"), args, {
+      // agy-job operations are fast local file ops (<1s); 30s is a generous guard.
+      const result = await raceWithTimeout(
+        pi.exec(join(SCRIPTS, "agy-job.sh"), args, {
+          signal,
+          cwd: ctx.cwd,
+          env: scriptEnv(),
+        }),
+        30,
         signal,
-        cwd: ctx.cwd,
-        env: scriptEnv(),
-      });
+      );
 
       return {
         content: [{ type: "text", text: result.stdout.trim() || result.stderr.trim() || "(no output)" }],

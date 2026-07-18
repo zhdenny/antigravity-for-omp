@@ -113,6 +113,19 @@ for s in agy-delegate.sh agy-cost-compare.sh agy-trace.sh; do
   fi
 done
 
+# 5. bin/ shims (Bash-tool PATH entrypoints)
+BIN="$ROOT/bin"
+if [ -d "$BIN" ]; then
+  for s in agy-delegate agy-job agy-cost-compare agy-doctor; do
+    if [ -x "$BIN/$s" ]; then ok "bin/$s executable"; else
+      bad "bin/$s not executable"; info "fix: chmod +x \"$BIN/$s\""
+    fi
+  done
+else
+  warn "bin/ directory missing — Bash-tool bare-name invocations won't work"
+  info "expected: $BIN/"
+fi
+
 
 PJ="$ROOT/package.json"
 if grep -qi microsoft /proc/version 2>/dev/null || [ -n "${WSL_DISTRO_NAME:-}" ]; then

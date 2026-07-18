@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# shim — forwards to scripts/agy-job.sh
+HERE="$(cd "$(dirname "$0")" && pwd)"
+ROOT="$(cd "$HERE/.." && pwd)"
+exec "$ROOT/scripts/agy-job.sh" "$@"
