@@ -63,10 +63,10 @@ out=$("$DELEGATE" --tier 2>/dev/null); rc=$?
 check "option without value -> exit 1 (friendly)" 1 "$rc"
 
 out=$(STUB_MODE=args "$DELEGATE" --tier flash "hi" 2>/dev/null); rc=$?
-check "flash tier -> correct model string" 0 "$rc" "Gemini 3.5 Flash (High)" "$out"
+check "flash tier -> correct model string" 0 "$rc" "Gemini 3.6 Flash (High)" "$out"
 
 out=$(STUB_MODE=args "$DELEGATE" --tier pro "hi" 2>/dev/null); rc=$?
-check "pro tier -> correct model string" 0 "$rc" "Gemini 3.1 Pro (High)" "$out"
+check "pro tier -> correct model string" 0 "$rc" "Gemini 3.6 Flash (High)" "$out"
 
 out=$(printf 'piped prompt' | STUB_MODE=args "$DELEGATE" - 2>/dev/null); rc=$?
 check "stdin prompt (-) read" 0 "$rc" "-p" "$out"
@@ -94,16 +94,16 @@ fi
 
 # userConfig default tier via env; explicit --tier still wins
 out=$(STUB_MODE=args OMP_PLUGIN_OPTION_DEFAULT_TIER=pro "$DELEGATE" "hi" 2>/dev/null); rc=$?
-check "userConfig default_tier=pro -> Pro model" 0 "$rc" "Gemini 3.1 Pro (High)" "$out"
+check "userConfig default_tier=pro -> Pro model" 0 "$rc" "Gemini 3.6 Flash (High)" "$out"
 
 out=$(STUB_MODE=args OMP_PLUGIN_OPTION_DEFAULT_TIER=pro "$DELEGATE" --tier flash "hi" 2>/dev/null); rc=$?
-check "explicit --tier overrides userConfig" 0 "$rc" "Gemini 3.5 Flash (High)" "$out"
+check "explicit --tier overrides userConfig" 0 "$rc" "Gemini 3.6 Flash (High)" "$out"
 
 # multi-model: default_model + per-tier remap (agy supports Claude/GPT on some plans)
 out=$(STUB_MODE=args OMP_PLUGIN_OPTION_DEFAULT_MODEL="Claude Sonnet 4.5" "$DELEGATE" "hi" 2>/dev/null); rc=$?
 check "userConfig default_model -> used as-is" 0 "$rc" "Claude Sonnet 4.5" "$out"
 out=$(STUB_MODE=args OMP_PLUGIN_OPTION_DEFAULT_MODEL="Claude Sonnet 4.5" "$DELEGATE" --tier flash "hi" 2>/dev/null); rc=$?
-check "explicit --tier beats default_model" 0 "$rc" "Gemini 3.5 Flash (High)" "$out"
+check "explicit --tier beats default_model" 0 "$rc" "Gemini 3.6 Flash (High)" "$out"
 out=$(STUB_MODE=args OMP_PLUGIN_OPTION_DEFAULT_MODEL="Claude Sonnet 4.5" "$DELEGATE" -m "GPT-X" "hi" 2>/dev/null); rc=$?
 check "explicit --model beats default_model" 0 "$rc" "GPT-X" "$out"
 out=$(STUB_MODE=args OMP_PLUGIN_OPTION_TIER_FLASH="Claude Sonnet 4.5" "$DELEGATE" --tier flash "hi" 2>/dev/null); rc=$?
@@ -119,7 +119,7 @@ check "explicit --timeout overrides userConfig" 0 "$rc" "--print-timeout 3m" "$o
 
 # invalid default tier from config falls back to flash; explicit --tier typo still errors
 out=$(STUB_MODE=args OMP_PLUGIN_OPTION_DEFAULT_TIER=bogus "$DELEGATE" "hi" 2>/dev/null); rc=$?
-check "invalid userConfig tier -> falls back to flash" 0 "$rc" "Gemini 3.5 Flash (High)" "$out"
+check "invalid userConfig tier -> falls back to flash" 0 "$rc" "Gemini 3.6 Flash (High)" "$out"
 out=$("$DELEGATE" --tier bogus "hi" 2>/dev/null); rc=$?
 check "explicit --tier bogus -> exit 1" 1 "$rc"
 
@@ -130,7 +130,7 @@ check "agy missing -> exit 13 + AGY_MISSING signal" 13 "$rc" "AGY_MISSING" "$out
 # --print-command: dry run prints the resolved agy invocation and exits 0 (agy not run)
 out=$("$DELEGATE" --tier pro --print-command "hi" 2>/dev/null); rc=$?
 check "--print-command -> exit 0 + resolved flags" 0 "$rc" "--print-timeout 5m" "$out"
-check "--print-command shows the tier model" 0 "$rc" "Pro" "$out"
+check "--print-command shows the tier model" 0 "$rc" "Flash" "$out"
 out=$(PATH="/usr/bin:/bin" "$DELEGATE" --print-command "hi" 2>/dev/null); rc=$?
 check "--print-command works without agy on PATH" 0 "$rc" "--print-timeout" "$out"
 
